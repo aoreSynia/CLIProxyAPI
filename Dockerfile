@@ -31,6 +31,7 @@ EXPOSE 8317
 
 ENV TZ=Asia/Shanghai
 ENV DEPLOY=cloud
+ENV PORT=8317 
 
 RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo "${TZ}" > /etc/timezone
 

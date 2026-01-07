@@ -3,8 +3,8 @@ cli-proxy-api
 *.exe
 
 # Configuration
-
-# .env
+config.yaml
+.env
 
 # Generated content
 bin/*

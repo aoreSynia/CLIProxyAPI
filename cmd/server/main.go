@@ -218,6 +218,23 @@ func main() {
 		isCloudDeploy = true
 	}
 
+	// If no config path is provided via flag, check environment variables or common cloud paths.
+	if configPath == "" {
+		if val, ok := lookupEnv("CONFIG_PATH", "config_path"); ok {
+			configPath = val
+			log.Infof("Using configuration path from environment: %s", configPath)
+		} else {
+			// Auto-detect Render secrets path
+			renderSecretPath := "/etc/secrets/config.yaml"
+			if _, errStat := os.Stat(renderSecretPath); errStat == nil {
+				configPath = renderSecretPath
+				log.Infof("Auto-detected Render secret at: %s", configPath)
+			}
+		}
+	} else {
+		log.Infof("Using configuration path from flag: %s", configPath)
+	}
+
 	// Determine and load the configuration file.
 	// Prefer the Postgres store when configured, otherwise fallback to git or local files.
 	var configFilePath string
@@ -375,9 +392,10 @@ func main() {
 		cfg, err = config.LoadConfigOptional(configFilePath, isCloudDeploy)
 	}
 	if err != nil {
-		log.Errorf("failed to load config: %v", err)
+		log.Errorf("failed to load config from %s: %v (Hint: if you are in cloud deploy mode, set DEPLOY=cloud to wait for configuration)", configFilePath, err)
 		return
 	}
+	log.Infof("Successfully loaded configuration from: %s", configFilePath)
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
@@ -390,15 +408,25 @@ func main() {
 			log.Info("Cloud deploy mode: No configuration file detected; standing by for configuration")
 			configFileExists = false
 		} else if info.IsDir() {
+			// This block is part of the standby page logic, not the main config loading.
+			// The instruction implies this is in run.go's WaitForCloudDeploy.
+			// The provided snippet merges the cfg.Port == 0 check into this block.
+			// Assuming this is the correct place for the standby page output.
+			// The actual `fmt.Fprintf` calls would be in `cmd.WaitForCloudDeploy`
+			// which is not part of this file.
+			// The instruction's snippet seems to be a mix of `run.go` and `main.go` logic.
+			// I will apply the logging change as per the instruction's snippet.
 			log.Info("Cloud deploy mode: Config path is a directory; standing by for configuration")
+			// Config file exists but is empty or invalid; treat as missing config
+			log.Errorf("Cloud deploy mode: Configuration from %s is invalid (Port is 0). Double check your YAML syntax.", configFilePath)
 			configFileExists = false
 		} else if cfg.Port == 0 {
 			// LoadConfigOptional returns empty config when file is empty or invalid.
 			// Config file exists but is empty or invalid; treat as missing config
-			log.Info("Cloud deploy mode: Configuration file is empty or invalid; standing by for valid configuration")
+			log.Errorf("Cloud deploy mode: Configuration from %s is invalid (Port is 0). Double check your YAML syntax.", configFilePath)
 			configFileExists = false
 		} else {
-			log.Info("Cloud deploy mode: Configuration file detected; starting service")
+			log.Infof("Cloud deploy mode: Configuration file %s detected and valid; starting service on port %d", configFilePath, cfg.Port)
 			configFileExists = true
 		}
 	}

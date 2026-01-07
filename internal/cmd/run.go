@@ -69,36 +69,12 @@ func WaitForCloudDeploy() {
 	addr := ":" + port
 
 	// Clarify that we are intentionally idle for configuration and not running the API server.
-	wd, _ := os.Getwd()
-	files, _ := os.ReadDir(".")
-	var fileNames []string
-	for _, f := range files {
-		fileNames = append(fileNames, f.Name())
-	}
-	log.Infof("Cloud deploy mode: Standby for config on %s. WD: %s, Files: %v", addr, wd, fileNames)
+	log.Infof("Cloud deploy mode: No config found; standing by for configuration on %s. API server is not started.", addr)
 
 	idleServer := &http.Server{
 		Addr: addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			currWd, _ := os.Getwd()
-			currFiles, _ := os.ReadDir(".")
-			var names []string
-			for _, f := range currFiles {
-				names = append(names, f.Name())
-			}
-			
-			// Cũng kiểm tra thử thư mục secrets phổ biến trên Render
-			secretFiles, _ := os.ReadDir("/etc/secrets")
-			var sNames []string
-			for _, f := range secretFiles {
-				sNames = append(sNames, f.Name())
-			}
-
-			fmt.Fprintf(w, "CLIProxyAPI is in cloud deploy standby mode.\n\n")
-			fmt.Fprintf(w, "Working Directory: %s\n", currWd)
-			fmt.Fprintf(w, "Files in Current Dir: %v\n", names)
-			fmt.Fprintf(w, "Files in /etc/secrets: %v\n", sNames)
-			fmt.Fprintf(w, "\nHint: If your config is in /etc/secrets, move it to %s/config.yaml or set CONFIG_PATH environment variable.", currWd)
+			_, _ = fmt.Fprintln(w, "CLIProxyAPI is in cloud deploy standby mode. Please provide a configuration file (config.yaml) or set CONFIG_PATH environment variable.")
 		}),
 	}
 

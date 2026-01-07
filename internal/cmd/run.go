@@ -59,15 +59,41 @@ func StartService(cfg *config.Config, configPath string, localPassword string) {
 }
 
 // WaitForCloudDeploy waits indefinitely for shutdown signals in cloud deploy mode
-// when no configuration file is available.
+// when no configuration file is available. It starts a minimal HTTP server to satisfy
+// cloud provider health checks (like Render's port detection).
 func WaitForCloudDeploy() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8317"
+	}
+	addr := ":" + port
+
 	// Clarify that we are intentionally idle for configuration and not running the API server.
-	log.Info("Cloud deploy mode: No config found; standing by for configuration. API server is not started. Press Ctrl+C to exit.")
+	log.Infof("Cloud deploy mode: No config found; standing by for configuration on %s. API server is not started.", addr)
+
+	idleServer := &http.Server{
+		Addr: addr,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprintln(w, "CLIProxyAPI is in cloud deploy standby mode. Please provide a configuration file to start the full API service.")
+		}),
+	}
+
+	go func() {
+		if err := idleServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Errorf("Cloud deploy standby server failed: %v", err)
+		}
+	}()
 
 	ctxSignal, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	// Block until shutdown signal is received
 	<-ctxSignal.Done()
-	log.Info("Cloud deploy mode: Shutdown signal received; exiting")
+	log.Info("Cloud deploy mode: Shutdown signal received; shutting down standby server")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	_ = idleServer.Shutdown(shutdownCtx)
+
+	log.Info("Cloud deploy mode: Standby server stopped; exiting")
 }

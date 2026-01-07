@@ -6,7 +6,6 @@ package cmd
 import (
 	"context"
 	"errors"
-	"os/signal"
 	"fmt"
 	"net/http"
 	"os"

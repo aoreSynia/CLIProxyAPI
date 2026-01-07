@@ -69,7 +69,13 @@ func WaitForCloudDeploy() {
 	addr := ":" + port
 
 	// Clarify that we are intentionally idle for configuration and not running the API server.
-	log.Infof("Cloud deploy mode: No config found; standing by for configuration on %s. API server is not started.", addr)
+	wd, _ := os.Getwd()
+	files, _ := os.ReadDir(".")
+	var fileNames []string
+	for _, f := range files {
+		fileNames = append(fileNames, f.Name())
+	}
+	log.Infof("Cloud deploy mode: Standby for config on %s. WD: %s, Files: %v", addr, wd, fileNames)
 
 	idleServer := &http.Server{
 		Addr: addr,

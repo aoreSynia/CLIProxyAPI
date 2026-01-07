@@ -1,5 +1,5 @@
-CONFIG_PATH=/etc/secrets/config.yaml
-DEPLOY=cloud
+CONFIG_PATH=/etc/secrets/config.yaml \
+DEPLOY=cloud \
 MANAGEMENT_STATIC_PATH=/CLIProxyAPI/static
 
 
